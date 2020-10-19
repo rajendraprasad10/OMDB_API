@@ -1,19 +1,35 @@
+# import required packages
 import requests
 from .serializers import MovieSerializer, CommentSerializer
 from .models import Movie, Comment
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.shortcuts import render
+from django.db.models import Q
 from django.http import HttpResponse
 
-
-def welcome(request):
-    return HttpResponse("Hello! I'm working :)")
-
+# home page
 def welcomehome(request):
-    return HttpResponse("More info on: github.com/lobsterick/OMDB_API_bridge/")
+    return render(request, 'index.html')
 
+# search movie from api and database using all items
+def Search(request):
+    if request.method == 'POST':
+        search = request.POST['search']
+        if search:
+            match = Movie.objects.filter(Q(Title__icontains = search)|
+                                         Q(Year__icontains = search) |
+                                         Q(Rated__icontains=search) |
+                                         Q(Released__icontains=search)
+                                         )
+            if match:
+                return render(request, 'search.html', {'result': match})
+            else:
+                return HttpResponse('no data here')
+    return render(request, 'search.html')
 
+# get movie from API
 class MoviesView(APIView):
 
     def get(self, request):
@@ -36,7 +52,7 @@ class MoviesView(APIView):
         else:
             return Response(data={"Error": "You must provide title in POST request with key named title"}, status=status.HTTP_400_BAD_REQUEST)
 
-        my_api_key = '28cb1743'
+        my_api_key = ' b309bbe5'
         url = f'http://www.omdbapi.com/?t={title}&type=movie&apikey={my_api_key}'
         response = requests.get(url)
         if response.status_code == requests.codes.ok and response.json()['Response'] == 'True':
@@ -54,7 +70,7 @@ class MoviesView(APIView):
         else:
             return Response(data={"Error": "No movie with that title"}, status=status.HTTP_204_NO_CONTENT)
 
-
+# get cooment API
 class CommentsView(APIView):
     def get(self, request):
         if request.data.get("movie_id"):
